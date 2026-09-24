@@ -1095,111 +1095,31 @@ cross_variety_results.append(
 print("\nCross-Variety Evaluation complete!")
 
 # %% [markdown]
-# ## Results Visualization
+# ## Results
 
 # %%
 # ====================================================================
-# RESULTS VISUALIZATION
+# KẾT QUẢ (chỉ in điểm)
 # ====================================================================
 
-print("\n" + "="*80)
-print("  MAIN RESULTS: MTL-Proposed (Qwen2.5-14B LoRA)")
-print("="*80)
-
-results_table = []
+print("\n" + "="*70)
+print("  MAIN RESULTS")
+print("="*70)
+print(f"  {'Variety':<8} {'Sent F1':>10} {'Sarc F1':>10} {'Avg F1':>10}")
+print("-"*42)
 for r in all_results:
-    results_table.append({
-        "Model": "MTL-Proposed (Qwen2.5-14B LoRA)",
-        "Variety": r["variety"],
-        "Sentiment F1": f"{r['sent_f1']:.4f}",
-        "Sarcasm F1": f"{r['sarc_f1']:.4f}",
-        "Avg F1": f"{(r['sent_f1'] + r['sarc_f1'])/2:.4f}",
-    })
+    avg = (r['sent_f1'] + r['sarc_f1']) / 2
+    print(f"  {r['variety']:<8} {r['sent_f1']:>10.4f} {r['sarc_f1']:>10.4f} {avg:>10.4f}")
 
-df_results = pd.DataFrame(results_table)
-print(df_results.to_string(index=False))
-
-# %%
-# Cross-variety results
-print("\nCross-Variety Evaluation Results:")
-cv_df = pd.DataFrame(cross_variety_results)
-print(cv_df.to_string(index=False))
-
-# %% [markdown]
-# ## Confusion Matrices & Classification Reports
-
-# %%
-# ====================================================================
-# CONFUSION MATRICES
-# ====================================================================
-
-proposed_results = [r for r in all_results if r["model_type"] == "MTL-Proposed"]
-
-if proposed_results:
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.suptitle("Confusion Matrices - MTL-Proposed (Qwen2.5-14B LoRA)", fontsize=14, fontweight="bold")
-
-    for i, result in enumerate(proposed_results):
-        variety = result["variety"]
-
-        cm_sent = confusion_matrix(result["sent_labels"], result["sent_preds"])
-        sns.heatmap(cm_sent, annot=True, fmt="d", cmap="Greens",
-                    xticklabels=["Negative", "Positive"],
-                    yticklabels=["Negative", "Positive"],
-                    ax=axes[0][i])
-        axes[0][i].set_title(f"{variety} - Sentiment")
-        axes[0][i].set_xlabel("Predicted")
-        axes[0][i].set_ylabel("Actual")
-
-        cm_sarc = confusion_matrix(result["sarc_labels"], result["sarc_preds"])
-        sns.heatmap(cm_sarc, annot=True, fmt="d", cmap="Oranges",
-                    xticklabels=["Not Sarcastic", "Sarcastic"],
-                    yticklabels=["Not Sarcastic", "Sarcastic"],
-                    ax=axes[1][i])
-        axes[1][i].set_title(f"{variety} - Sarcasm")
-        axes[1][i].set_xlabel("Predicted")
-        axes[1][i].set_ylabel("Actual")
-
-    plt.tight_layout()
-    plt.savefig("confusion_matrices.png", dpi=150, bbox_inches="tight")
-    plt.show()
-    print("Saved: confusion_matrices.png")
-
-# %%
-# Classification reports
-print("\nDetailed Classification Reports:")
-for result in proposed_results:
-    variety = result["variety"]
-    print(f"\n{'='*40}")
-    print(f"  {variety} - Sentiment")
-    print(f"{'='*40}")
-    print(classification_report(
-        result["sent_labels"], result["sent_preds"],
-        target_names=["Negative", "Positive"]
-    ))
-    print(f"\n  {variety} - Sarcasm")
-    print(f"{'='*40}")
-    print(classification_report(
-        result["sarc_labels"], result["sarc_preds"],
-        target_names=["Not Sarcastic", "Sarcastic"]
-    ))
-
-# %% [markdown]
-# ## Final Summary
-
-# %%
-# ====================================================================
-# FINAL SUMMARY
-# ====================================================================
-
-print("\n" + "="*80)
-print("  FINAL SUMMARY")
-print("="*80)
-
-print(f"\n  Model: {LLM_MODEL_NAME}")
-print(f"  LoRA: r={LORA_R}, alpha={LORA_ALPHA}")
-print(f"  Quantization: {'4-bit NF4 QLoRA' if USE_4BIT else 'BF16'}")
-print(f"  Training time: {total_time/3600:.1f} hours")
+print(f"\n  CROSS-VARIETY")
+print("-"*50)
+print(f"  {'Train→Test':<16} {'Sent F1':>10} {'Sarc F1':>10} {'Avg F1':>10}")
+print("-"*50)
+for r in cross_variety_results:
+    avg = (r['sent_f1'] + r['sarc_f1']) / 2
+    print(f"  {r['train_variety']}→{r['test_variety']:<6} {r['sent_f1']:>10.4f} {r['sarc_f1']:>10.4f} {avg:>10.4f}")
+print("="*70)
+print(f"  Training time: {total_time/3600:.1f}h")
 
 # Save results to JSON
 all_results_clean = []
@@ -1214,12 +1134,10 @@ for r in all_results:
 with open("experiment_results.json", "w") as f:
     json.dump({
         "model": LLM_MODEL_NAME,
-        "lora_config": {"r": LORA_R, "alpha": LORA_ALPHA, "targets": LORA_TARGET_MODULES},
         "main_results": all_results_clean,
         "cross_variety": [{k: float(v) if isinstance(v, (np.float32, np.float64)) else v
                            for k, v in r.items()} for r in cross_variety_results],
     }, f, indent=2)
 
-print("\nResults saved to: experiment_results.json")
-print(f"All experiments completed!")
+print("Saved: experiment_results.json")
 
