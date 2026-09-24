@@ -961,138 +961,7 @@ for r in all_results:
         print(f"    💾 Checkpoint: {ckpt}")
 print("="*75)
 
-# %% [markdown]
-# ## Cross-Variety Evaluation
 
-# %%
-# ====================================================================
-# CROSS-VARIETY EVALUATION
-# ====================================================================
-
-print("\n" + "="*80)
-print("  CROSS-VARIETY EVALUATION")
-print("="*80)
-
-cross_variety_results = []
-
-def run_cross_variety(train_variety, test_variety, device=None):
-    if device is None:
-        device = DEVICE
-    if "cuda" in str(device):
-        torch.cuda.set_device(device)
-    print(f"\n{'='*60}")
-    print(f"  CROSS-VARIETY | Train: {train_variety} -> Test: {test_variety} | Device: {device}")
-    print(f"{'='*60}")
-
-    train_sub = df_train_filtered[df_train_filtered["variety"] == train_variety]
-    val_sub = df_val_filtered[df_val_filtered["variety"] == train_variety]
-    test_sub = df_test_filtered[df_test_filtered["variety"] == test_variety]
-
-    train_ds = BESSTIEDataset(
-        train_sub["text_clean"].values, train_sub["sentiment_label"].values,
-        train_sub["sarcasm_label"].values, tokenizer
-    )
-    val_ds = BESSTIEDataset(
-        val_sub["text_clean"].values, val_sub["sentiment_label"].values,
-        val_sub["sarcasm_label"].values, tokenizer
-    )
-    test_ds = BESSTIEDataset(
-        test_sub["text_clean"].values, test_sub["sentiment_label"].values,
-        test_sub["sarcasm_label"].values, tokenizer
-    )
-
-    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
-    test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
-
-    import gc
-    gc.collect()
-    if "cuda" in str(device):
-        torch.cuda.synchronize(device)
-        torch.cuda.empty_cache()
-
-    model = MTLProposedModel()
-
-    sent_weights = compute_class_weights(train_sub["sentiment_label"].values, device=device)
-    sarc_weights = compute_class_weights(train_sub["sarcasm_label"].values, device=device)
-    sent_criterion = nn.CrossEntropyLoss(weight=sent_weights)
-    sarc_criterion = nn.CrossEntropyLoss(weight=sarc_weights)
-
-    # Optimizer (same 2-group setup)
-    lora_params = [p for n, p in model.named_parameters() if p.requires_grad and "encoder" in n]
-    head_params = [p for n, p in model.named_parameters() if p.requires_grad and "encoder" not in n]
-
-    optimizer = AdamW([
-        {"params": lora_params, "lr": LEARNING_RATE},
-        {"params": head_params, "lr": LEARNING_RATE / 2},
-    ], weight_decay=0.01)
-
-    total_optimizer_steps = (len(train_loader) // GRAD_ACCUM_STEPS + 1) * NUM_EPOCHS
-    scheduler = get_linear_schedule_with_warmup(
-        optimizer, num_warmup_steps=int(0.1 * total_optimizer_steps),
-        num_training_steps=total_optimizer_steps
-    )
-
-    best_avg_f1 = 0
-    best_model_state = None
-    patience_counter = 0
-    scaler = torch.cuda.amp.GradScaler(enabled=USE_AMP and "cuda" in str(device))
-
-    for epoch in range(NUM_EPOCHS):
-        train_mtl_epoch(model, train_loader, optimizer, scheduler,
-                        sent_criterion, sarc_criterion, LAMBDA_SARCASM, scaler=scaler)
-        val_metrics = evaluate_mtl(model, val_loader, sent_criterion, sarc_criterion)
-        avg_f1 = (val_metrics["sent_f1"] + val_metrics["sarc_f1"]) / 2
-
-        print(f"  Epoch {epoch+1}/{NUM_EPOCHS} | "
-              f"Val Sent F1: {val_metrics['sent_f1']:.4f} Sarc F1: {val_metrics['sarc_f1']:.4f}")
-
-        if avg_f1 > best_avg_f1:
-            best_avg_f1 = avg_f1
-            best_model_state = {k: v.cpu().clone() for k, v in model.state_dict().items()
-                                if any(k.startswith(prefix) for prefix in
-                                       ["sent_proj", "sarc_proj", "ctai", "ntn",
-                                        "sentiment_head", "sarcasm_head", "dropout"])
-                                or "lora" in k.lower()}
-            patience_counter = 0
-        else:
-            patience_counter += 1
-            if patience_counter >= PATIENCE:
-                print(f"  Early stopping at epoch {epoch+1}")
-                break
-
-    model.load_state_dict(best_model_state, strict=False)
-    test_metrics = evaluate_mtl(model, test_loader, sent_criterion, sarc_criterion)
-
-    print(f"\n  CROSS-VARIETY TEST ({train_variety} -> {test_variety}):")
-    print(f"     Sentiment F1: {test_metrics['sent_f1']:.4f}")
-    print(f"     Sarcasm F1: {test_metrics['sarc_f1']:.4f}")
-
-    del model
-    gc.collect()
-    if "cuda" in str(device):
-        torch.cuda.synchronize(device)
-        torch.cuda.empty_cache()
-
-    return {
-        "train_variety": train_variety, "test_variety": test_variety,
-        "model_type": "MTL-Proposed-Qwen14B",
-        "sent_f1": test_metrics["sent_f1"], "sarc_f1": test_metrics["sarc_f1"],
-        "sent_precision": test_metrics["sent_precision"],
-        "sent_recall": test_metrics["sent_recall"],
-        "sarc_precision": test_metrics["sarc_precision"],
-        "sarc_recall": test_metrics["sarc_recall"],
-    }
-
-# %%
-cross_variety_results.append(
-    run_cross_variety("en-AU", "en-UK", device=DEVICE)
-)
-cross_variety_results.append(
-    run_cross_variety("en-UK", "en-AU", device=DEVICE)
-)
-
-print("\nCross-Variety Evaluation complete!")
 
 # %% [markdown]
 # ## Results
@@ -1111,14 +980,7 @@ for r in all_results:
     avg = (r['sent_f1'] + r['sarc_f1']) / 2
     print(f"  {r['variety']:<8} {r['sent_f1']:>10.4f} {r['sarc_f1']:>10.4f} {avg:>10.4f}")
 
-print(f"\n  CROSS-VARIETY")
-print("-"*50)
-print(f"  {'Train→Test':<16} {'Sent F1':>10} {'Sarc F1':>10} {'Avg F1':>10}")
-print("-"*50)
-for r in cross_variety_results:
-    avg = (r['sent_f1'] + r['sarc_f1']) / 2
-    print(f"  {r['train_variety']}→{r['test_variety']:<6} {r['sent_f1']:>10.4f} {r['sarc_f1']:>10.4f} {avg:>10.4f}")
-print("="*70)
+
 print(f"  Training time: {total_time/3600:.1f}h")
 
 # Save results to JSON
@@ -1135,8 +997,6 @@ with open("experiment_results.json", "w") as f:
     json.dump({
         "model": LLM_MODEL_NAME,
         "main_results": all_results_clean,
-        "cross_variety": [{k: float(v) if isinstance(v, (np.float32, np.float64)) else v
-                           for k, v in r.items()} for r in cross_variety_results],
     }, f, indent=2)
 
 print("Saved: experiment_results.json")
