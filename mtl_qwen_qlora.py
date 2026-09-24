@@ -32,6 +32,7 @@ install("scikit-learn")
 install("seaborn")
 install("peft")           # LoRA / QLoRA adapters
 install("bitsandbytes")   # 4-bit quantization
+install("torchao")        # Sửa lỗi incompatible torchao version của peft
 
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
