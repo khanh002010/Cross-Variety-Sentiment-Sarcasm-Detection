@@ -789,9 +789,9 @@ def run_mtl_experiment(variety, num_epochs=NUM_EPOCHS, lambda_sarc=LAMBDA_SARCAS
     # Khởi tạo model (QLoRA + CTAI + NTN)
     start_time = time.time()
     model = MTLProposedModel()
-    # device_map="auto" đã tự đặt model lên GPU
+    model.to(device)  # Đưa các lớp custom (CTAI, NTN, Heads) lên GPU
     load_time = time.time() - start_time
-    print(f"  ⏱️ Model loaded in {load_time:.1f}s")
+    print(f"  ⏱️ Model loaded and moved to {device} in {load_time:.1f}s")
 
     # Tính class weights
     train_subset = df_train_filtered[
