@@ -755,7 +755,8 @@ print("Training utilities defined")
 # EXPERIMENT: MTL-PROPOSED (Qwen2.5-14B LoRA)
 # ====================================================================
 
-CHECKPOINT_DIR = "checkpoints"
+# Đảm bảo lưu vào Modal Volume vĩnh viễn
+CHECKPOINT_DIR = "/mnt/en-au/checkpoints"
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 print(f"📁 Checkpoint directory: {CHECKPOINT_DIR}")
 
