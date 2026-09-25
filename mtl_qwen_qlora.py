@@ -161,12 +161,12 @@ LORA_TARGET_MODULES = [    # Áp LoRA lên TẤT CẢ linear layers trong attent
     "gate_proj", "up_proj", "down_proj",       # MLP SwiGLU (3 modules)
 ]  # → 7 modules × 48 layers = 336 LoRA adapters
 USE_4BIT = False           # ❌ KHÔNG quantize — BF16 full precision (tốt nhất cho F1)
-GRADIENT_CHECKPOINTING = False  # ❌ TẮT — dùng VRAM cho activations, tăng tốc mỗi step
+GRADIENT_CHECKPOINTING = True   # BẬT ĐỂ TIẾT KIỆM VRAM (tránh lỗi CUDA Out of Memory)
 
 # --- Training ---
-MAX_LEN = 384              # 384 tokens — cân bằng context vs VRAM (14B model cần nhiều VRAM hơn)
-BATCH_SIZE = 8             # BS nhỏ để activations không OOM (14B × 48 layers = VRAM lớn)
-GRAD_ACCUM_STEPS = 4       # Effective batch = 8 × 4 = 32 (gradient ổn định)
+MAX_LEN = 384              # 384 tokens
+BATCH_SIZE = 6             # Giảm xuống 6 để an toàn tuyệt đối cho VRAM
+GRAD_ACCUM_STEPS = 6       # Effective batch = 6 × 6 = 36 (ổn định gradient)
 LEARNING_RATE = 2e-4       # LR chuẩn cho LoRA
 NUM_EPOCHS = 15
 LAMBDA_SARCASM = 0.7
