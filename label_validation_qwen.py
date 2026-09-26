@@ -9,6 +9,13 @@
 # 5. KHÔNG tạo hay nén file ZIP rác.
 
 # %%
+# Cài đặt thư viện (Chạy trên Modal Notebook)
+try:
+    get_ipython().run_line_magic('uv', 'pip install -U peft transformers accelerate torchao seaborn matplotlib scikit-learn')
+except:
+    get_ipython().run_line_magic('pip', 'install -U peft transformers accelerate torchao seaborn matplotlib scikit-learn')
+
+# %%
 import os
 import re
 import warnings
