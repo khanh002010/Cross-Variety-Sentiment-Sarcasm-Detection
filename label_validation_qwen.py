@@ -11,9 +11,9 @@
 # %%
 # Cài đặt thư viện (Chạy trên Modal Notebook)
 try:
-    get_ipython().run_line_magic('uv', 'pip install -U peft transformers accelerate torchao seaborn matplotlib scikit-learn')
+    get_ipython().run_line_magic('uv', 'pip install -U torch torchvision torchaudio torchao peft transformers accelerate seaborn matplotlib scikit-learn')
 except:
-    get_ipython().run_line_magic('pip', 'install -U peft transformers accelerate torchao seaborn matplotlib scikit-learn')
+    get_ipython().run_line_magic('pip', 'install -U torch torchvision torchaudio torchao peft transformers accelerate seaborn matplotlib scikit-learn')
 
 # %%
 import os
