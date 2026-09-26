@@ -88,7 +88,8 @@ for v, p in CHECKPOINT_PATHS.items():
     if not os.path.exists(p) and os.path.exists(f"checkpoints/best_MTL-Proposed_{v}.pt"):
         CHECKPOINT_PATHS[v] = f"checkpoints/best_MTL-Proposed_{v}.pt"
 
-OUTPUT_DIR = "."
+# Lưu chung thư mục với input trên Modal Volume
+OUTPUT_DIR = "/mnt/en-au"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print(f"\n📂 File Validation: {VALID_PATH}")
